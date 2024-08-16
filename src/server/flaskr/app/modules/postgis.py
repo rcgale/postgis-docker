@@ -31,7 +31,10 @@ class PostgisConnector:
                     , (addy).location As city
                     , (addy).stateabbrev As st
                     , (addy).zip
-                    FROM geocode(%(var_address)s) As g;
+                    , b.geoid AS fips
+                    FROM geocode(%(var_address)s) As g
+                    JOIN tabblock20 AS b ON ST_Contains(b.the_geom, g.geomout)
+                    ;
                 """, {
                     'var_address': var_address
                 })
@@ -51,7 +54,8 @@ class PostgisConnector:
             'streetType': result[4],
             'city': result[5],
             'state': result[6],
-            'zip': result[7]
+            'zip': result[7],
+            'fips': result[8]
         }
 
         return output

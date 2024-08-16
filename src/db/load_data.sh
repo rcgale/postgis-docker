@@ -2,7 +2,7 @@ set -e
 
 GISDATA="/gisdata"
 TMPDIR="${GISDATA}/temp/"
-UNZIPTOOL=unzip
+UNZIPTOOL="unzip -u"
 YEAR=$GEOCODER_YEAR
 BASEPATH="www2.census.gov/geo/tiger/TIGER${YEAR}"
 BASEURL="https://${BASEPATH}"
@@ -74,9 +74,9 @@ load_national_data () {
     ${PSQL} -c "DROP SCHEMA IF EXISTS tiger_staging CASCADE;"
     ${PSQL} -c "CREATE SCHEMA tiger_staging;"
     $UNZIPTOOL tl_${YEAR}_us_state.zip
-    for z in tl_*state.zip ; 
-    do 
-        $UNZIPTOOL -o -d $TMPDIR $z; 
+    for z in tl_*state.zip ;
+    do
+        $UNZIPTOOL -o -d $TMPDIR $z;
     done
     cd $TMPDIR;
 
@@ -328,49 +328,54 @@ load_state_data () {
     ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_zip_state ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"                                                                                                                                                                                                                                                                                                                                                           
     ${PSQL} -c "vacuum analyze tiger_data.${abbr}_addr;"
 
+    # PATCH
+    # https://gis.stackexchange.com/questions/473187/postgis-step-in-state-load-loader-load-staged-data-is-producing-more-columns
+    ${PSQL} -c "UPDATE loader_lookuptables SET columns_exclude =  '{gid,geoid,cpi,suffix1ce,statefp00,statefp10,countyfp00,countyfp10,tractce00,tractce10,blkgrpce00,blkgrpce10,blockce00,blockce10,cousubfp00,submcdfp00,conctyfp00,placefp00,aiannhfp00,aiannhce00,comptyp00,trsubfp00,trsubce00,anrcfp00,elsdlea00,scsdlea00,unsdlea00,uace00,cd108fp,sldust00,sldlst00,vtdst00,zcta5ce00,tazce00,ugace00,puma5ce00,vtdst10,tazce10,uace10,puma5ce10,tazce,uace,vtdst,zcta5ce10,puma5ce,ugace10,pumace10,estatefp,ugace,blockce,pumace20,sdadmlea,uace20}'::text[] WHERE lookup_name = 'faces';"
+
     #############
     # Tabblock
-    #############  
-    cd $GISDATA
-    wget $BASEURL/TABBLOCK/tl_${YEAR}_${FIPS}_tabblock10.zip --mirror --reject=html --no-verbose
-    cd $GISDATA/$BASEPATH/TABBLOCK
-    rm -f ${TMPDIR}/*.*
-    ${PSQL} -c "DROP SCHEMA IF EXISTS tiger_staging CASCADE;"
-    ${PSQL} -c "CREATE SCHEMA tiger_staging;"
-    for z in tl_${YEAR}_${FIPS}*_tabblock10.zip; 
-    do 
-        $UNZIPTOOL -o -d $TMPDIR $z; 
-    done
-
-    cd $TMPDIR;
-    ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_tabblock(CONSTRAINT pk_${abbr}_tabblock PRIMARY KEY (tabblock_id)) INHERITS(tiger.tabblock);"
-    ${SHP2PGSQL} -D -c -s 4269 -g the_geom -W "latin1" tl_${YEAR}_${FIPS}_tabblock10.dbf tiger_staging.${abbr}_tabblock10 | ${PSQL}
-    ${PSQL} -c "ALTER TABLE tiger_staging.${abbr}_tabblock10 RENAME geoid10 TO tabblock_id;  SELECT loader_load_staged_data(lower('${abbr}_tabblock10'), lower('${abbr}_tabblock')); "
-    ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_tabblock ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"
-    ${PSQL} -c "CREATE INDEX tiger_data_${abbr}_tabblock_the_geom_gist ON tiger_data.${abbr}_tabblock USING gist(the_geom);"
-    ${PSQL} -c "vacuum analyze tiger_data.${abbr}_tabblock;"
-
     #############
-    # Block Group
-    ############# 
-    cd /gisdata
-    wget $BASEURL/BG/tl_${YEAR}_${FIPS}_bg.zip --mirror --reject=html
-    cd $GISDATA/$BASEPATH/BG
+    cd $GISDATA
+    wget $BASEURL/TABBLOCK20/tl_${YEAR}_${FIPS}_tabblock20.zip --mirror --reject=html --no-verbose
+    cd $GISDATA/$BASEPATH/TABBLOCK20
     rm -f ${TMPDIR}/*.*
     ${PSQL} -c "DROP SCHEMA IF EXISTS tiger_staging CASCADE;"
     ${PSQL} -c "CREATE SCHEMA tiger_staging;"
-    for z in tl_${YEAR}_${FIPS}*_bg.zip; 
-    do 
-        $UNZIPTOOL -o -d $TMPDIR $z; 
+    for z in tl_${YEAR}_${FIPS}*_tabblock20.zip;
+    do
+        $UNZIPTOOL -o -d $TMPDIR $z;
     done
+
     cd $TMPDIR;
 
-    ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_bg(CONSTRAINT pk_${abbr}_bg PRIMARY KEY (bg_id)) INHERITS(tiger.bg);"
-    ${SHP2PGSQL} -D -c -s 4269 -g the_geom -W "latin1" tl_${YEAR}_${FIPS}_bg.dbf tiger_staging.${abbr}_bg | ${PSQL}
-    ${PSQL} -c "ALTER TABLE tiger_staging.${abbr}_bg RENAME geoid TO bg_id;  SELECT loader_load_staged_data(lower('${abbr}_bg'), lower('${abbr}_bg')); "
-    ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_bg ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"
-    ${PSQL} -c "CREATE INDEX tiger_data_${abbr}_bg_the_geom_gist ON tiger_data.${abbr}_bg USING gist(the_geom);"
-    ${PSQL} -c "vacuum analyze tiger_data.${abbr}_bg;"
+    ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_tabblock20(CONSTRAINT pk_${abbr}_tabblock20 PRIMARY KEY (geoid)) INHERITS(tiger.tabblock20);"
+    ${SHP2PGSQL} -D -c -s 4269 -g the_geom -W "latin1" tl_${YEAR}_${FIPS}_tabblock20.dbf tiger_staging.${abbr}_tabblock20 | ${PSQL}
+    ${PSQL} -c "SELECT loader_load_staged_data(lower('${abbr}_tabblock20'), lower('${abbr}_tabblock20')); "
+    ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_tabblock20 ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"
+    ${PSQL} -c "CREATE INDEX tiger_data_${abbr}_tabblock20_the_geom_gist ON tiger_data.${abbr}_tabblock20 USING gist(the_geom);"
+    ${PSQL} -c "vacuum analyze tiger_data.${abbr}_tabblock20;"
+
+#    #############
+#    # Block Group
+#    #############
+#    cd /gisdata
+#    wget $BASEURL/BG/tl_${YEAR}_${FIPS}_bg.zip --mirror --reject=html
+#    cd $GISDATA/$BASEPATH/BG
+#    rm -f ${TMPDIR}/*.*
+#    ${PSQL} -c "DROP SCHEMA IF EXISTS tiger_staging CASCADE;"
+#    ${PSQL} -c "CREATE SCHEMA tiger_staging;"
+#    for z in tl_${YEAR}_${FIPS}*_bg.zip;
+#    do
+#        $UNZIPTOOL -o -d $TMPDIR $z;
+#    done
+#    cd $TMPDIR;
+#
+#    ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_bg(CONSTRAINT pk_${abbr}_bg PRIMARY KEY (bg_id)) INHERITS(tiger.bg);"
+#    ${SHP2PGSQL} -D -c -s 4269 -g the_geom -W "latin1" tl_${YEAR}_${FIPS}_bg.dbf tiger_staging.${abbr}_bg | ${PSQL}
+#    ${PSQL} -c "ALTER TABLE tiger_staging.${abbr}_bg RENAME geoid TO bg_id;  SELECT loader_load_staged_data(lower('${abbr}_bg'), lower('${abbr}_bg')); "
+#    ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_bg ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"
+#    ${PSQL} -c "CREATE INDEX tiger_data_${abbr}_bg_the_geom_gist ON tiger_data.${abbr}_bg USING gist(the_geom);"
+#    ${PSQL} -c "vacuum analyze tiger_data.${abbr}_bg;"
 }
 
 
