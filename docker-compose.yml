@@ -15,6 +15,10 @@ services:
             default:
                 aliases:
                     - db
+        shm_size: 1g
+        volumes:
+            - ./volumes/gisdata:/gisdata
+            - ./volumes/var2/lib/postgresql/data:/var/lib/postgresql/data
     api:
         build:
             context: ./src/server
