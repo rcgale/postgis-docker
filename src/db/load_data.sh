@@ -1,3 +1,5 @@
+set -e
+
 GISDATA="/gisdata"
 TMPDIR="${GISDATA}/temp/"
 UNZIPTOOL=unzip
