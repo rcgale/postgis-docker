@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y postgis=3.4.2+dfsg-1.pgdg110+1
 # Postgis
 FROM postgis
 
-COPY --from=builder /usr/bin/shp2pgsql /usr/bin/
+COPY --from=builder --chmod=755 /usr/bin/shp2pgsql /usr/bin/
 
 # Configure utils
 RUN apt-get update \
@@ -21,8 +21,8 @@ RUN apt-get update \
 RUN mkdir -p /gisdata \
     && chmod 777 -R /gisdata
 
-# Copy nation an state scripts
-COPY ./load_data.sh /docker-entrypoint-initdb.d/
+# Copy nation and state scripts
+COPY --chmod=444 ./load_data.sh /docker-entrypoint-initdb.d/
 
 # Overwrite the default /postgis.sh file
-COPY ./postgis.sh /docker-entrypoint-initdb.d/
+COPY --chmod=444 ./postgis.sh /docker-entrypoint-initdb.d/
