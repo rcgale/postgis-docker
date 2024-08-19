@@ -405,7 +405,9 @@ load_state_data () {
 }
 
 table_exists() {
-  ROW_COUNT=$($PSQL -qtAc "SELECT COUNT(*) FROM $1.$2" || echo "0")
+  TABLE_COUNT=$($PSQL -qtAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$1' AND table_name='$2'")
+  if [[ $TABLE_COUNT == "0" ]]; then return 1; fi
+  ROW_COUNT=$($PSQL -qtAc "SELECT COUNT(*) FROM $1.$2")
   if [[ $ROW_COUNT == "0" ]]; then return 1; fi
   return 0
 }
