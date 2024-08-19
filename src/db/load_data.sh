@@ -360,10 +360,6 @@ load_state_data () {
     # Tabblock
     #############
     table_exists "tiger_data" "${abbr}_tabblock20" || (
-      # PATCH
-      # https://gis.stackexchange.com/questions/473187/postgis-step-in-state-load-loader-load-staged-data-is-producing-more-columns
-      ${PSQL} -c "UPDATE loader_lookuptables SET columns_exclude =  '{gid,geoid,cpi,suffix1ce,statefp00,statefp10,countyfp00,countyfp10,tractce00,tractce10,blkgrpce00,blkgrpce10,blockce00,blockce10,cousubfp00,submcdfp00,conctyfp00,placefp00,aiannhfp00,aiannhce00,comptyp00,trsubfp00,trsubce00,anrcfp00,elsdlea00,scsdlea00,unsdlea00,uace00,cd108fp,sldust00,sldlst00,vtdst00,zcta5ce00,tazce00,ugace00,puma5ce00,vtdst10,tazce10,uace10,puma5ce10,tazce,uace,vtdst,zcta5ce10,puma5ce,ugace10,pumace10,estatefp,ugace,blockce,pumace20,sdadmlea,uace20}'::text[] WHERE lookup_name = 'faces';"
-
       cd $GISDATA
       wget $BASEURL/TABBLOCK20/tl_${YEAR}_${FIPS}_tabblock20.zip --mirror --reject=html --no-verbose
       cd $GISDATA/$BASEPATH/TABBLOCK20
@@ -421,6 +417,12 @@ main () {
 
     # Extensions
     create_extensions
+
+    # PATCHES
+    # https://gis.stackexchange.com/questions/473187/postgis-step-in-state-load-loader-load-staged-data-is-producing-more-columns
+    ${PSQL} -c "UPDATE loader_lookuptables SET columns_exclude =  '{gid,geoid,cpi,suffix1ce,statefp00,statefp10,countyfp00,countyfp10,tractce00,tractce10,blkgrpce00,blkgrpce10,blockce00,blockce10,cousubfp00,submcdfp00,conctyfp00,placefp00,aiannhfp00,aiannhce00,comptyp00,trsubfp00,trsubce00,anrcfp00,elsdlea00,scsdlea00,unsdlea00,uace00,cd108fp,sldust00,sldlst00,vtdst00,zcta5ce00,tazce00,ugace00,puma5ce00,vtdst10,tazce10,uace10,puma5ce10,tazce,uace,vtdst,zcta5ce10,puma5ce,ugace10,pumace10,estatefp,ugace,blockce,pumace20,sdadmlea,uace20}'::text[] WHERE lookup_name = 'faces';"
+    # RG added 2024-08-19
+    ${PSQL} -c "UPDATE loader_lookuptables SET columns_exclude =  '{gid,geoidfq20,uatype,uatype20}'::text[] WHERE lookup_name = 'tabblock20';"
 
     echo '----------------------------------------'
     echo "      Adding US national data"
