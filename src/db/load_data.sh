@@ -399,11 +399,9 @@ load_state_data () {
 }
 
 table_exists() {
-  SCHEMA=$1
-  TABLE=$2
-  C="SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_schema='${SCHEMA}' AND table_name='${TABLE}');"
-  ${PSQL} -c "\d ${SCHEMA}.${TABLE}" &> /dev/null
-  return $?
+  ROW_COUNT=$($PSQL -qtAc "SELECT COUNT(*) FROM $1.$2" || echo "0")
+  if [[ $ROW_COUNT == "0" ]]; then return 1; fi
+  return 0
 }
 
 main () {
