@@ -247,6 +247,7 @@ load_state_data () {
       done
       cd $TMPDIR;
 
+      ${PSQL} -c "DROP TABLE IF EXISTS tiger_data.${abbr}_edges;"
       ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_featnames(CONSTRAINT pk_${abbr}_featnames PRIMARY KEY (gid)) INHERITS(tiger.featnames);ALTER TABLE tiger_data.${abbr}_featnames ALTER COLUMN statefp SET DEFAULT '${FIPS}';"
       for z in *featnames*.dbf; do
           ${SHP2PGSQL} -D   -D -s 4269 -g the_geom -W "latin1" $z tiger_staging.${abbr}_featnames | ${PSQL}
@@ -282,6 +283,7 @@ load_state_data () {
       done
       cd $TMPDIR;
 
+      ${PSQL} -c "DROP TABLE IF EXISTS tiger_data.${abbr}_edges;"
       ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_edges(CONSTRAINT pk_${abbr}_edges PRIMARY KEY (gid)) INHERITS(tiger.edges);"
       for z in *edges*.dbf;
       do
@@ -296,12 +298,18 @@ load_state_data () {
       ${PSQL} -c "CREATE INDEX idx_tiger_data_${abbr}_edges_countyfp ON tiger_data.${abbr}_edges USING btree (countyfp);"
       ${PSQL} -c "CREATE INDEX tiger_data_${abbr}_edges_the_geom_gist ON tiger_data.${abbr}_edges USING gist(the_geom);"
       ${PSQL} -c "CREATE INDEX idx_tiger_data_${abbr}_edges_zipl ON tiger_data.${abbr}_edges USING btree (zipl);"
+      ${PSQL} -c "vacuum analyze tiger_data.${abbr}_edges;"
+    )
+    table_exists "tiger_data" "${abbr}_zip_state_loc" || (
+      ${PSQL} -c "DROP TABLE IF EXISTS tiger_data.${abbr}_zip_state_loc;"
       ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_zip_state_loc(CONSTRAINT pk_${abbr}_zip_state_loc PRIMARY KEY(zip,stusps,place)) INHERITS(tiger.zip_state_loc);"
       ${PSQL} -c "INSERT INTO tiger_data.${abbr}_zip_state_loc(zip,stusps,statefp,place) SELECT DISTINCT e.zipl, '${abbr}', '${FIPS}', p.name FROM tiger_data.${abbr}_edges AS e INNER JOIN tiger_data.${abbr}_faces AS f ON (e.tfidl = f.tfid OR e.tfidr = f.tfid) INNER JOIN tiger_data.${abbr}_place As p ON(f.statefp = p.statefp AND f.placefp = p.placefp ) WHERE e.zipl IS NOT NULL;"
       ${PSQL} -c "CREATE INDEX idx_tiger_data_${abbr}_zip_state_loc_place ON tiger_data.${abbr}_zip_state_loc USING btree(soundex(place));"
       ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_zip_state_loc ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"
-      ${PSQL} -c "vacuum analyze tiger_data.${abbr}_edges;"
       ${PSQL} -c "vacuum analyze tiger_data.${abbr}_zip_state_loc;"
+    )
+    table_exists "tiger_data" "${abbr}_zip_lookup_base" || (
+      ${PSQL} -c "DROP TABLE IF EXISTS tiger_data.${abbr}_zip_lookup_base;"
       ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_zip_lookup_base(CONSTRAINT pk_${abbr}_zip_state_loc_city PRIMARY KEY(zip,state, county, city, statefp)) INHERITS(tiger.zip_lookup_base);"
       ${PSQL} -c "INSERT INTO tiger_data.${abbr}_zip_lookup_base(zip,state,county,city, statefp) SELECT DISTINCT e.zipl, '${abbr}', c.name,p.name,'${FIPS}'  FROM tiger_data.${abbr}_edges AS e INNER JOIN tiger.county As c  ON (e.countyfp = c.countyfp AND e.statefp = c.statefp AND e.statefp = '${FIPS}') INNER JOIN tiger_data.${abbr}_faces AS f ON (e.tfidl = f.tfid OR e.tfidr = f.tfid) INNER JOIN tiger_data.${abbr}_place As p ON(f.statefp = p.statefp AND f.placefp = p.placefp ) WHERE e.zipl IS NOT NULL;"
       ${PSQL} -c "ALTER TABLE tiger_data.${abbr}_zip_lookup_base ADD CONSTRAINT chk_statefp CHECK (statefp = '${FIPS}');"
@@ -330,6 +338,7 @@ load_state_data () {
       done
       cd $TMPDIR;
 
+      ${PSQL} -c "DROP TABLE IF EXISTS tiger_data.${abbr}_addr;"
       ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_addr(CONSTRAINT pk_${abbr}_addr PRIMARY KEY (gid)) INHERITS(tiger.addr);ALTER TABLE tiger_data.${abbr}_addr ALTER COLUMN statefp SET DEFAULT '${FIPS}';"
       for z in *addr*.dbf;
       do
@@ -368,6 +377,7 @@ load_state_data () {
 
       cd $TMPDIR;
 
+      ${PSQL} -c "DROP TABLE IF EXISTS tiger_data.${abbr}_tabblock20;"
       ${PSQL} -c "CREATE TABLE tiger_data.${abbr}_tabblock20(CONSTRAINT pk_${abbr}_tabblock20 PRIMARY KEY (geoid)) INHERITS(tiger.tabblock20);"
       ${SHP2PGSQL} -D -c -s 4269 -g the_geom -W "latin1" tl_${YEAR}_${FIPS}_tabblock20.dbf tiger_staging.${abbr}_tabblock20 | ${PSQL}
       ${PSQL} -c "SELECT loader_load_staged_data(lower('${abbr}_tabblock20'), lower('${abbr}_tabblock20')); "
