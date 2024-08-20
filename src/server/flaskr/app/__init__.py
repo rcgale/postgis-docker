@@ -16,16 +16,17 @@ postgis = PostgisConnector()
 def latlong():
     try:
         address = request.args.get('q')
-        
+
         if not address:
-            return bad_request()
+            return bad_request("Empty query.")
 
         data = postgis.get_lat_long(address)
         if data:
             return ok(jsonify(data))
 
-        return not_found()
+        return not_found(f"{address}")
 
     except Exception as ex:
         sys.stderr.write(f'Error: {ex}\n')
         return server_error()
+
